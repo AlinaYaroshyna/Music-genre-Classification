@@ -3,13 +3,37 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.base import clone
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 import json
+import matplotlib.pyplot as plt
+import os
+from extraction import DATA_PATH
+
+
+def visual_genre_comparison(features, labels):
+    plt.figure(figsize=(12, 7))
+    genres = sorted(os.listdir(DATA_PATH))
+    for genre_id, genre_name in enumerate(genres):
+        genre_data = features[0, genre_id, :]
+        genre_data = [f for f in genre_data if isinstance(f, np.ndarray)]
+        if len(genre_data) > 0:
+            genre_profile = np.mean(np.array(genre_data), axis=0)
+            plt.plot(range(1, 14), genre_profile, label=genre_name, marker='o', linewidth=2)
+
+    plt.title("Średni profil cech MFCC (Music Genre Fingerprints)", fontsize=14)
+    plt.xlabel("Indeks współczynnika MFCC")
+    plt.ylabel("Średnia wartość współczynnika")
+    plt.xticks(range(1, 14))
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("mfcc_genre_profiles.png")
+    plt.show()
 
 if __name__ == '__main__':
     klassifikatory = ["SVM", "MLPClassifier", "KNN"]
@@ -45,6 +69,7 @@ if __name__ == '__main__':
             X = X.reshape(-1, 1)
         y = labels[ekstr_id].reshape(-1)
 
+
         print(f"Przetwarzanie ekstraktora: {ekstr_name}...")
 
         for fold_id, (train_index, test_index) in enumerate(rskf.split(X, y)):
@@ -62,7 +87,7 @@ if __name__ == '__main__':
                 report = classification_report(y_test, y_pred, output_dict=True)
                 with open(f"./reports/report_{model_id}_{ekstr_id}_{fold_id}.json", "w") as f:
                     json.dump(report, f, indent=4)
-                results[model_id, ekstr_id, fold_id] = balanced_accuracy_score(y_test, y_pred)
+                results[model_id, ekstr_id, fold_id] = accuracy_score(y_test, y_pred)
 
     # klasyfikacja z ogolnym zestawem cech (wszystkie ekstraktory razem)
     X_all = []
@@ -99,7 +124,7 @@ if __name__ == '__main__':
             report = classification_report(y_test, y_pred, output_dict=True)
             with open(f"./reports/report_{model_id}_4_{fold_id}.json", "w") as f:
                 json.dump(report, f, indent=4)
-            results[model_id, len(ekstraktory), fold_id] = balanced_accuracy_score(y_test, y_pred)
+            results[model_id, len(ekstraktory), fold_id] = accuracy_score(y_test, y_pred)
 
     print("\n--- WYNIKI KOŃCOWE (Średnia Balanced Accuracy) ---")
     for klass_id, klass in enumerate(klassifikatory):
@@ -122,7 +147,7 @@ if __name__ == '__main__':
         klassifikatory=klassifikatory,
         ekstraktory=ekstraktory
     )
-
+    visual_genre_comparison(features, labels)
 
     #jak bardzo niezbalansowana
     #pca i tsne -> wizualizacja
